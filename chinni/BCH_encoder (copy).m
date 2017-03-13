@@ -9,13 +9,21 @@ M = 7;
 delta = 15;
 erasure = '2';
 N = P^M - 1;
-PRIM_POLY = 'D^7 + D^3 + 1';
+PRIM_POLY = [1, 0, 0, 1, 0, 0, 0, 1];
 [FIELD, EXPFORM] = gftuple([-1:P^M-2]', PRIM_POLY, P);
 
 %% find minimal polynomials %%
 MINPOLS = gfminpol(EXPFORM, PRIM_POLY, P);
-% convert to exponential form %
-MINPOLS = log2(MINPOLS)/log2(P);
+[m, n] = size(MINPOLS);
+for i = 1:m
+    for j = 1:n
+        if MINPOLS(i, j) == 0
+            MINPOLS(i, j) = -Inf;
+        else
+            MINPOLS(i, j) = log2(MINPOLS(i, j))/log2(P);
+        end
+    end
+end
 
 %% generate the narrow-sense BCH generator polynomial with design distance 15 %%
 BCH_GEN_POLY = 0;
@@ -46,20 +54,26 @@ for msgstr = messages
         mx(i) = str2double(msgstr{1,1}(i));
         
         % convert them to exponential form for computations in GF(2^7) %
-        mx(i) = log2(mx(i))/log2(P);
+        if mx(i) == 0
+            mx(i) = -Inf;
+        else
+            mx(i) = log2(mx(i))/log2(P);
+        end
     end
     % multiply mx with x^N-K to get Mx %
     Mx = padarray(mx, [0, N-K], -Inf, 'pre');
     % calculate the remainder to encode systematically %
     [Qx, Rx] = gfdeconv(Mx, BCH_GEN_POLY, FIELD);
     % compute the code word %
-    Cx = gfsub(Mx, Rx, FIELD);
+    cx = gfsub(Mx, Rx, FIELD);
+    % add zeros for higher order terms which don't exist to maintain uniform size %
+    Cx = padarray(cx, [0, N-length(cx)], -Inf, 'post');
     % convert exponential to GF(2) numbers %
     for j = 1:length(Cx)
         if Cx(j) == -Inf
             Cx(j) = 0;
-        elseif Cx(j) == 0
-            Cx(j) = 1;
+        else
+            Cx(j) = P^Cx(j);
         end
     end
 
@@ -78,4 +92,3 @@ for codestr = codewords
    fprintf(codefile, '%s\n', codestr{1, 1});
 end
 fclose(codefile);
-
