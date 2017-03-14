@@ -54,7 +54,7 @@ for rx_msg = rx_messages
         Rx_poly = gf(Rx, M, PRIM_POLY);
         
         % convert (alpha^1, ... alpha^14) to corresponding integer representation in GF-array %
-        integer_representation = bi2de(FIELD(3:16, :), 2, 'right-msb');
+        integer_representation = bi2de(FIELD(3:16, :), P, 'right-msb');
         % convert those integer represented numbers to GF-elements %
         bch_roots = gf(integer_representation, M, PRIM_POLY);
         % calculate the syndrome at the roots %
