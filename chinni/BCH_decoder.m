@@ -15,12 +15,6 @@ PRIM_POLY = 'D^7 + D^3 + 1';
 %% find minimal polynomials %%
 MINPOLS = gfminpol(EXPFORM, PRIM_POLY, P);
 MINPOLS = log2(MINPOLS)/log2(P);
-% [m, n] = size(MINPOLS);
-% for i = 1:m
-%     for j = 1:n
-%         MINPOLS(i, j) = log2(MINPOLS(i, j))/log2(P);
-%     end
-% end
 
 %% generate the narrow-sense BCH generator polynomial with design distance 14 %%
 BCH_GEN_POLY = 0;
@@ -52,51 +46,18 @@ for rx_msg = rx_messages
         for i = 1:length(rx)
             % convert string to number %
             Rx(i) = str2double(rx(i));
-            % convert to exponential form %
-            % Rx(i) = log2(Rx(i))/log2(P);
         end
         
         % flip the vector as `gf` function requires it in descending order of powers %
-        gfroots(Rx, PRIM_POLY, P)
         Rx = fliplr(Rx);
         % generate the received vector polynomial in GF(P^M) %
         Rx_poly = gf(Rx, M, PRIM_POLY);
-        roots(Rx_poly)
         
-        % calculate the syndrome %
-        bch_roots = gf(min_poly_vec+1, M, PRIM_POLY);
+        % convert (alpha^1, ... alpha^14) to corresponding integer representation in GF-array %
+        integer_representation = bi2de(FIELD(3:16, :), 2, 'right-msb');
+        % convert those integer represented numbers to GF-elements %
+        bch_roots = gf(integer_representation, M, PRIM_POLY);
+        % calculate the syndrome at the roots %
         syndrome = polyval(Rx_poly, bch_roots);
     end
 end
-syndrome
-
-%% alternate decoding %%
-% for rx_msg = rx_messages
-%     % replace the erasure first with 0 and then with 1 and error correct %
-%     for change = [0, 1]
-%         % replace erasures with 0's and 1's %
-%         rx = strrep(rx_msg{1, 1}, erasure, int2str(change));
-%         % generate the received vector in vector form %
-%         Rx = [];
-%         for i = 1:length(rx)
-%             % convert string to number %
-%             Rx(i) = str2double(rx(i));
-%             % convert to exponential form %
-%             % Rx(i) = log2(Rx(i))/log2(P);
-%         end
-%         
-%         syndrome = [];
-%         for i = min_poly_vec
-%             temp_rx = Rx;
-%             for j = 1:length(temp_rx)
-%                 temp_rx(j) = mod(temp_rx(j)*i*j, N-1);
-%             end
-%             
-%             sum = -Inf;
-%             for j = temp_rx
-%                 sum = gfadd(sum, EXPFORM(j+2), FIELD);
-%             end
-%             syndrome(end+1) = sum;
-%         end
-%     end
-% end
