@@ -108,6 +108,7 @@ for rx_msg = rx_messages
             if Discrepancy(i+2) == 0
                 Sigma(i+3, :) = Sigma(i+2, :);
             else 
+                % find the index of rho to maximize the difference %
                 max = Diff(2);
                 rho_index = 2;
                 for t = 2:(i+1)
