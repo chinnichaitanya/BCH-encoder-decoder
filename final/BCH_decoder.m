@@ -37,6 +37,8 @@ end
 fclose(rx_msgfile);
 
 %% decode the received messages %%
+est_codewords_vec = gf(zeros(2, N), M, PRIM_POLY);
+num_errors = [];
 for rx_msg = rx_messages
     for change = [0, 1]
         % replace erasures with 0's and 1's %
@@ -132,36 +134,48 @@ for rx_msg = rx_messages
         while Sigma(end, j) == 0
             j = j-1;
         end
-        % check the number of errors located %
-        if j > 8
-            % break %
-        else 
-            % evaluate the error-locator-polynomial for each element in GF(P^M) %
-            err_poly = gf(fliplr(Sigma(end, :)), M, PRIM_POLY);
-            int_rep_all = bi2de(FIELD(2:(N+1), :), P, 'right-msb');
-            ele_field = gf(int_rep_all, M, PRIM_POLY);
-            % evaluated values for ELP at each element %
-            err_vector = polyval(err_poly, ele_field);
-            
-            % initialize the estimated codeword in GF(P^M) %
-            est_codeword = gf(zeros(1, N), M, PRIM_POLY);
-            % update the estimated codeword depending on the evaluated vector %
-            % update for 1 separately and for other elements separately %
-            for h = 2:N
-                if err_vector(h) == 0
-                    est_codeword(h-1) = 1 + Rx_poly(h-1);
-                else
-                    est_codeword(h-1) = Rx_poly(h-1); 
-                end
-            end
-            if err_vector(1) == 0
-                est_codeword(N) = 1 + Rx_poly(N); 
+        num_errors(change+1) = j;
+        
+        % estimate the codeword from the error-locator-polynomial %
+        % evaluate the error-locator-polynomial for each element in GF(P^M) %
+        err_poly = gf(fliplr(Sigma(end, :)), M, PRIM_POLY);
+        int_rep_all = bi2de(FIELD(2:(N+1), :), P, 'right-msb');
+        ele_field = gf(int_rep_all, M, PRIM_POLY);
+        % evaluated values for ELP at each element %
+        err_vector = polyval(err_poly, ele_field);
+
+        % initialize the estimated codeword in GF(P^M) %
+        est_codeword = gf(zeros(1, N), M, PRIM_POLY);
+        % update the estimated codeword depending on the evaluated vector %
+        % update for 1 separately and for other elements separately %
+        for h = 2:N
+            if err_vector(h) == 0
+                est_codeword(h-1) = 1 + Rx_poly(h-1);
             else
-                est_codeword(N) = Rx_poly(N); 
+                est_codeword(h-1) = Rx_poly(h-1); 
             end
-            
-            % flip the estimated codeword to get in correct order %
-            est_codeword = fliplr(est_codeword);
-        end 
+        end
+        if err_vector(1) == 0
+            est_codeword(N) = 1 + Rx_poly(N); 
+        else
+            est_codeword(N) = Rx_poly(N); 
+        end
+
+        % flip the estimated codeword to get in correct order %
+        est_codeword = fliplr(est_codeword);
+        % update the array %
+        est_codewords_vec(change+1, :) = est_codeword;        
     end
+    
+    % estimate the original message based on the number of errors occurred %
+    if num_errors(1) > num_errors(2)
+        % most likely codeword is the second one %
+        est_msg = est_codewords_vec(2, N-K+1:end);
+    else
+        % most likely code word is the first one %
+        est_msg = est_codewords_vec(1, N-K+1:end);
+    end
+    
+    % print the message and codeword to the file %
+    
 end
