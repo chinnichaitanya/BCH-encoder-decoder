@@ -60,67 +60,92 @@ for rx_msg = rx_messages
         % calculate the syndrome at the roots %
         syndrome = polyval(Rx_poly, bch_roots);
         
-        % simplified iterative algorithm for finding error location poly
+        % simplified BM-algorithm for finding error-locator-polynomial %
+        
+        % initializing the variables %
+        % mu-vector %
         Mu = [-0.5, 0, 1, 2, 3, 4, 5, 6, 7];
+        
+        % discrepancy-vector %
         Discrepancy = gf([1, 0, 0, 0, 0, 0, 0, 0, 0], M, PRIM_POLY);
+        
+        % l-vector %
         L = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        
+        % difference (2*mu-rho) vector %
         Diff = [-1, 0, 0, 0, 0, 0, 0, 0, 0];
-
+        
+        % sigma polynomial initialization in decimal form %
         sigma_dec = zeros(9, 84);
+        % constant term is always 1 %
         sigma_dec(:,1) = 1;
-
+        
+        % convert sigma-polynomial to gf-field type %
         Sigma = gf(sigma_dec, M, PRIM_POLY);
+        % update the sigma-polynomial for the first iteration %
         Sigma(3, 2) = syndrome(1);
         
+        % update the discrepancy for the first iteration %
         Discrepancy(2) = syndrome(1);
         
+        % iterate to find the error-locator-polynomial %
         for i = 1:6
-          j = 84;
-          while Sigma(i+2,j) == 0
-              j = j-1;
-          end
-          L(i+2) = j - 1;
-          Diff(i+2) = 2*Mu(i+2) - L(i+2);
-          Discrepancy(i+2) = 0;
-          for k = 0:L(i+2) 
-              Discrepancy(i+2)= Discrepancy(i+2) + Sigma(i+2, k+1)*syndrome(2*i+1-k);
-          end
-          
-          if Discrepancy(i+2) == 0
-              Sigma(i+3, :) = Sigma(i+2, :);
-          else 
-              max = Diff(2);
-              rho_index = 2;
-              for t = 2:(i+1)
-                  if Discrepancy(t) ~= 0
-                     if max < Diff(t)
-                         max = Diff(t);
-                         rho_index = t;
-                     end
-                  end 
-              end
-              
-              coeff = Discrepancy(i+2)/Discrepancy(rho_index);
-              degree = 2*(Mu(i+2) - Mu(rho_index));
-              add_poly = mul_poly(degree, Sigma(rho_index, :), L(rho_index), M, PRIM_POLY);
-              Sigma(i+3, :) = Sigma(i+2, :) + coeff*add_poly;
-          end
+            % find the degree of the current sigma polynomial %
+            j = 84;
+            while Sigma(i+2, j) == 0
+                j = j-1;
+            end
+            % update the corresponding vectors %
+            L(i+2) = j-1;
+            Diff(i+2) = 2*Mu(i+2) - L(i+2);
+            % calculate the discrepancy %
+            Discrepancy(i+2) = 0;
+            for k = 0:L(i+2) 
+                Discrepancy(i+2)= Discrepancy(i+2) + Sigma(i+2, k+1)*syndrome(2*i+1-k);
+            end
+            
+            % update the sigma polynomial depending on the discrepancy %
+            if Discrepancy(i+2) == 0
+                Sigma(i+3, :) = Sigma(i+2, :);
+            else 
+                max = Diff(2);
+                rho_index = 2;
+                for t = 2:(i+1)
+                    if Discrepancy(t) ~= 0
+                        if max < Diff(t)
+                            max = Diff(t);
+                            rho_index = t;
+                        end
+                    end 
+                end
+
+                coeff = Discrepancy(i+2)/Discrepancy(rho_index);
+                degree = 2*(Mu(i+2) - Mu(rho_index));
+                add_poly = mul_poly(degree, Sigma(rho_index, :), L(rho_index), M, PRIM_POLY);
+                Sigma(i+3, :) = Sigma(i+2, :) + coeff*add_poly;
+            end
         end
         
+        % find the degree of the final error-locator-polynomial %
         j = 84;
         while Sigma(9, j) == 0
-          j = j-1;
+            j = j-1;
         end
+        % check the number of errors located %
         if j > 8
-            % break 
+            % break %
         else 
-            % correcting each bit
+            % evaluate the error-locator-polynomial for each element in GF[128] %
             err_poly = gf(fliplr(Sigma(9, :)), M, PRIM_POLY);
             int_rep_all = bi2de(FIELD(2:128, :), P, 'right-msb');
             ele_field = gf(int_rep_all, M, PRIM_POLY);
+            % evaluated values for ELP at each element %
             err_vector = polyval(err_poly, ele_field);
-
+            
+            % initialize the estimated codeword in GF[128] %
             est_codeword = gf(zeros(1, 127), M, PRIM_POLY);
+            % update the estimated codeword depending on the evaluated vector %
+            % update for 1 separately and for other elements separately %
             for h = 2:127
                 if err_vector(h) == 0
                     est_codeword(h-1) = 1 + Rx_poly(h-1);
@@ -129,11 +154,12 @@ for rx_msg = rx_messages
                 end
             end
             if err_vector(1) == 0
-               est_codeword(127) = 1 + Rx_poly(127); 
+                est_codeword(127) = 1 + Rx_poly(127); 
             else
-               est_codeword(127) = Rx_poly(127); 
+                est_codeword(127) = Rx_poly(127); 
             end
-
+            
+            % flip the estimated codeword to get in correct order %
             est_codeword = fliplr(est_codeword);
         end 
     end
