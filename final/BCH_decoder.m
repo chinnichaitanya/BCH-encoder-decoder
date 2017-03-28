@@ -78,7 +78,7 @@ for rx_msg = rx_messages
         % sigma polynomial initialization in decimal form %
         sigma_dec = zeros(9, 84);
         % constant term is always 1 %
-        sigma_dec(:,1) = 1;
+        sigma_dec(:, 1) = 1;
         
         % convert sigma-polynomial to gf-field type %
         Sigma = gf(sigma_dec, M, PRIM_POLY);
@@ -129,25 +129,25 @@ for rx_msg = rx_messages
         
         % find the degree of the final error-locator-polynomial %
         j = 84;
-        while Sigma(9, j) == 0
+        while Sigma(end, j) == 0
             j = j-1;
         end
         % check the number of errors located %
         if j > 8
             % break %
         else 
-            % evaluate the error-locator-polynomial for each element in GF[128] %
-            err_poly = gf(fliplr(Sigma(9, :)), M, PRIM_POLY);
-            int_rep_all = bi2de(FIELD(2:128, :), P, 'right-msb');
+            % evaluate the error-locator-polynomial for each element in GF(P^M) %
+            err_poly = gf(fliplr(Sigma(end, :)), M, PRIM_POLY);
+            int_rep_all = bi2de(FIELD(2:(N+1), :), P, 'right-msb');
             ele_field = gf(int_rep_all, M, PRIM_POLY);
             % evaluated values for ELP at each element %
             err_vector = polyval(err_poly, ele_field);
             
-            % initialize the estimated codeword in GF[128] %
-            est_codeword = gf(zeros(1, 127), M, PRIM_POLY);
+            % initialize the estimated codeword in GF(P^M) %
+            est_codeword = gf(zeros(1, N), M, PRIM_POLY);
             % update the estimated codeword depending on the evaluated vector %
             % update for 1 separately and for other elements separately %
-            for h = 2:127
+            for h = 2:N
                 if err_vector(h) == 0
                     est_codeword(h-1) = 1 + Rx_poly(h-1);
                 else
@@ -155,9 +155,9 @@ for rx_msg = rx_messages
                 end
             end
             if err_vector(1) == 0
-                est_codeword(127) = 1 + Rx_poly(127); 
+                est_codeword(N) = 1 + Rx_poly(N); 
             else
-                est_codeword(127) = Rx_poly(127); 
+                est_codeword(N) = Rx_poly(N); 
             end
             
             % flip the estimated codeword to get in correct order %
