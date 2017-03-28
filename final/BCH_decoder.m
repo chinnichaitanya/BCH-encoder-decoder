@@ -37,8 +37,11 @@ end
 fclose(rx_msgfile);
 
 %% decode the received messages %%
-est_codewords_vec = gf(zeros(2, N), M, PRIM_POLY);
+all_est_codewords = cell(1, 0);
+all_est_msgs = cell(1, 0);
+est_codewords = gf(zeros(2, N), M, PRIM_POLY);
 num_errors = [];
+
 for rx_msg = rx_messages
     for change = [0, 1]
         % replace erasures with 0's and 1's %
@@ -164,18 +167,45 @@ for rx_msg = rx_messages
         % flip the estimated codeword to get in correct order %
         est_codeword = fliplr(est_codeword);
         % update the array %
-        est_codewords_vec(change+1, :) = est_codeword;        
+        est_codewords(change+1, :) = est_codeword;        
     end
     
     % estimate the original message based on the number of errors occurred %
     if num_errors(1) > num_errors(2)
         % most likely codeword is the second one %
-        est_msg = est_codewords_vec(2, N-K+1:end);
+        likely_codeword = est_codewords(2, :);
     else
         % most likely code word is the first one %
-        est_msg = est_codewords_vec(1, N-K+1:end);
+        likely_codeword = est_codewords(1, :);
     end
+    % decode the original message from the most likely codeword %
+    est_msg = likely_codeword(N-K+1:end);
     
-    % print the message and codeword to the file %
-    
+    % add them to the vector %
+    % convert the gf elements to double %
+    likely_codeword_double = double(likely_codeword.x);
+    est_msg_double = double(est_msg.x);
+    % add them to the cell %
+    code = cell(1, 1);
+    for iter = 1:length(likely_codeword_double)
+        code{1, 1}(iter) = int2str(likely_codeword_double(iter));
+    end
+    all_est_codewords{1, end+1} = code{1, 1};
+    msg = cell(1, 1);
+    for iter = 1:length(est_msg_double)
+        msg{1, 1}(iter) = int2str(est_msg_double(iter));
+    end
+    all_est_msgs{1, end+1} = msg{1, 1};
 end
+
+%% print the message and codeword to the file %%
+decodefile = fopen('decoderOut.txt', 'w');
+for i = 1:size(rx_messages, 2)
+    codestr = all_est_codewords{1, i};
+    msgstr = all_est_msgs{1, i};
+    
+    fprintf(decodefile, '%s\n', codestr);
+    fprintf(decodefile, '%s\n', msgstr);
+    fprintf(decodefile, '\n');
+end
+fclose(decodefile);
