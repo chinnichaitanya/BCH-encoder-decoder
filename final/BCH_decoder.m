@@ -174,14 +174,13 @@ for rx_msg = rx_messages
         est_codewords(change+1, :) = est_codeword;        
     end
     
-    % estimate the original message based on the number of errors occurred %
-    % check the syndrome of the codewords %
+    % check the syndrome of the two decoded codewords %
     est_code_poly_1 = gf(fliplr(est_codewords(1, :)), M, PRIM_POLY);
     est_code_poly_2 = gf(fliplr(est_codewords(2, :)), M, PRIM_POLY);
     syndrome_check_1 = polyval(est_code_poly_1, bch_roots);
     syndrome_check_2 = polyval(est_code_poly_2, bch_roots);
     
-%     if num_errors(1) > num_errors(2)
+    % determine likely codeword depending on syndrome %
     if syndrome_check_2 == 0
         % most likely codeword is the second one %
         likely_codeword = est_codewords(2, :);
@@ -189,6 +188,7 @@ for rx_msg = rx_messages
         % most likely code word is the first one %
         likely_codeword = est_codewords(1, :);
     else
+        % make them all 0 %
         likely_codeword = 0*est_codewords(1, :);
     end
     % decode the original message from the most likely codeword %
@@ -202,6 +202,7 @@ for rx_msg = rx_messages
     code = cell(1, 1);
     msg = cell(1, 1);
     % check if atleast one syndrome is 0 %
+    % condition for adding error message if decoder failed %
     if syndrome_check_1 .* syndrome_check_2 == 0
         for iter = 1:length(est_msg_double)
             msg{1, 1}(iter) = int2str(est_msg_double(iter));
@@ -223,7 +224,6 @@ for i = 1:size(rx_messages, 2)
     codestr = all_est_codewords{1, i};
     msgstr = all_est_msgs{1, i};
     
-    fprintf(decodefile, '\n');
     fprintf(decodefile, '%s\n', codestr);
     fprintf(decodefile, '%s\n', msgstr);
     fprintf(decodefile, '\n');
