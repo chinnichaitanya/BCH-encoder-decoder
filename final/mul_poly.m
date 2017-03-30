@@ -1,3 +1,9 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Written by Chinni Chaitanya (EE13B072) and Prafullachandhra (EE16D402)
+% Project-1: BCH-encoder-decoder
+% EE5160: Error Control Coding
+% Name: mul_poly.m
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% multiplies two polynomials in GF field %%
 function mul_vec = mul_poly(c, vec, deg, M, PRIM_POLY)
     a_vec = vec(1: deg+1);

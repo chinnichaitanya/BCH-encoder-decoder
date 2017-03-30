@@ -1,3 +1,9 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Written by Chinni Chaitanya (EE13B072) and Prafullachandhra (EE16D402)
+% Project-1: BCH-encoder-decoder
+% EE5160: Error Control Coding
+% Name: BCH_encoder.m
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% clear env %%
 clear;
 close all;
