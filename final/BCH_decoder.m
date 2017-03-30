@@ -150,14 +150,17 @@ for rx_msg = rx_messages
         % initialize the estimated codeword in GF(P^M) %
         est_codeword = gf(zeros(1, N), M, PRIM_POLY);
         % update the estimated codeword depending on the evaluated vector %
-        % update for 1 separately and for other elements separately %
+        % update for first element separately and for other elements separately %
         for h = 2:N
             if err_vector(h) == 0
+                % implies that element is a root of ELP %
                 est_codeword(h-1) = 1 + Rx_poly(h-1);
             else
-                est_codeword(h-1) = Rx_poly(h-1); 
+                % implies that element is NOT a root of ELP %
+                est_codeword(h-1) = Rx_poly(h-1);
             end
         end
+        % we update for the first element separately because of index notation %
         if err_vector(1) == 0
             est_codeword(N) = 1 + Rx_poly(N); 
         else
