@@ -7,6 +7,7 @@ clc;
 P = 2;
 M = 7;
 delta = 15;
+T = (delta-1)/2;
 erasure = '2';
 N = P^M - 1;
 PRIM_POLY = 'D^7 + D^3 + 1';
@@ -195,8 +196,16 @@ for rx_msg = rx_messages
     end
     all_est_codewords{1, end+1} = code{1, 1};
     msg = cell(1, 1);
-    for iter = 1:length(est_msg_double)
-        msg{1, 1}(iter) = int2str(est_msg_double(iter));
+
+    est_code_poly = gf(fliplr(likely_codeword_double), M, PRIM_POLY);
+    syndrome_check = polyval(est_code_poly, bch_roots);
+%     if num_errors(1)>T &&  num_errors(2)>T
+    if syndrome_check ~= 0
+        msg{1, 1} = 'Cannot decode since the number of errors > t (=7)';
+    else
+        for iter = 1:length(est_msg_double)
+            msg{1, 1}(iter) = int2str(est_msg_double(iter));
+        end
     end
     all_est_msgs{1, end+1} = msg{1, 1};
 end
@@ -207,6 +216,7 @@ for i = 1:size(rx_messages, 2)
     codestr = all_est_codewords{1, i};
     msgstr = all_est_msgs{1, i};
     
+    fprintf(decodefile, '\n');
     fprintf(decodefile, '%s\n', codestr);
     fprintf(decodefile, '%s\n', msgstr);
     fprintf(decodefile, '\n');
