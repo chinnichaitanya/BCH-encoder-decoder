@@ -41,7 +41,6 @@ fclose(rx_msgfile);
 all_est_codewords = cell(1, 0);
 all_est_msgs = cell(1, 0);
 est_codewords = gf(zeros(2, N), M, PRIM_POLY);
-num_errors = [];
 
 for rx_msg = rx_messages
     for change = [0, 1]
@@ -93,7 +92,26 @@ for rx_msg = rx_messages
         
         % update the discrepancy for the first iteration %
         Discrepancy(2) = syndrome(1);
-        
+
+        % print the intermediate table values %
+        for i = 1:2
+            fprintf('Mu: %d\n', Mu(i));
+            fprintf('Degree: %d\n', L(i));
+            
+            dis = Discrepancy(i);
+            fprintf('Discrepancy: %d\n', gf2exp(dis, FIELD, EXPFORM));
+            
+            fprintf('Difference: %d\n', Diff(i));
+            
+            % get degree of the sigma polynomial %
+            j = 84;
+            while Sigma(i, j) == 0
+                j = j-1;
+            end
+            sig = Sigma(i, 1:j);
+            fprintf('Sigma:');
+            disp(gf2exp(sig, FIELD, EXPFORM));
+        end
         % iterate to find the error-locator-polynomial %
         for i = 1:6
             % find the degree of the current sigma polynomial %
@@ -131,18 +149,41 @@ for rx_msg = rx_messages
                 add_poly = mul_poly(degree, Sigma(rho_index, :), L(rho_index), M, PRIM_POLY);
                 Sigma(i+3, :) = Sigma(i+2, :) + coeff*add_poly;
             end
+            % print the intermediate table values %
+            fprintf('Mu: %d\n', Mu(i+2));
+            fprintf('Degree: %d\n', L(i+2));
+            
+            dis = Discrepancy(i+2);
+            fprintf('Discrepancy: %d\n', gf2exp(dis, FIELD, EXPFORM));
+            
+            fprintf('Difference: %d\n', Diff(i+2));
+            
+            % get degree of the sigma polynomial %
+            j = 84;
+            while Sigma(i+2, j) == 0
+                j = j-1;
+            end
+            sig = Sigma(i+2, 1:j);
+            fprintf('Sigma:');
+            disp(gf2exp(sig, FIELD, EXPFORM));
         end
-        
-        % find the degree of the final error-locator-polynomial %
+        % print the intermediate table values %
+        fprintf('Mu: %d\n', Mu(9));
+        % get degree of the sigma polynomial %
         j = 84;
-        while Sigma(end, j) == 0
+        while Sigma(9, j) == 0
             j = j-1;
         end
-        num_errors(change+1) = j;
+        fprintf('Degree: %d\n', j-1);
+        fprintf('Discrepancy: -\n');
+        fprintf('Difference: %d\n', 2*Mu(9)-j+1);
+        sig = Sigma(9, 1:j);
+        fprintf('Sigma:');
+        disp(gf2exp(sig, FIELD, EXPFORM));
         
         % estimate the codeword from the error-locator-polynomial %
         % evaluate the error-locator-polynomial for each element in GF(P^M) %
-        err_poly = gf(fliplr(Sigma(end, :)), M, PRIM_POLY);
+        err_poly = gf(fliplr(Sigma(9, :)), M, PRIM_POLY);
         int_rep_all = bi2de(FIELD(2:(N+1), :), P, 'right-msb');
         ele_field = gf(int_rep_all, M, PRIM_POLY);
         % evaluated values for ELP at each element %
