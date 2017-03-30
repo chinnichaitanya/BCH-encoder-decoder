@@ -196,10 +196,10 @@ for rx_msg = rx_messages
     end
     all_est_codewords{1, end+1} = code{1, 1};
     msg = cell(1, 1);
-
+    
+    % check the syndrome of the estimated codeword %
     est_code_poly = gf(fliplr(likely_codeword_double), M, PRIM_POLY);
     syndrome_check = polyval(est_code_poly, bch_roots);
-%     if num_errors(1)>T &&  num_errors(2)>T
     if syndrome_check ~= 0
         msg{1, 1} = 'Cannot decode since the number of errors > t (=7)';
     else
