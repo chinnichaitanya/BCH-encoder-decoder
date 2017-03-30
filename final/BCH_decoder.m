@@ -153,7 +153,7 @@ for rx_msg = rx_messages
         % update the estimated codeword depending on the evaluated vector %
         % update for first element separately and for other elements separately %
         for h = 2:N
-            if err_vector(h) == 0
+            if err_vector(h) == 00
                 % implies that element is a root of ELP %
                 est_codeword(h-1) = 1 + Rx_poly(h-1);
             else
@@ -175,12 +175,21 @@ for rx_msg = rx_messages
     end
     
     % estimate the original message based on the number of errors occurred %
-    if num_errors(1) > num_errors(2)
+    % check the syndrome of the codewords %
+    est_code_poly_1 = gf(fliplr(est_codewords(1, :)), M, PRIM_POLY);
+    est_code_poly_2 = gf(fliplr(est_codewords(2, :)), M, PRIM_POLY);
+    syndrome_check_1 = polyval(est_code_poly_1, bch_roots);
+    syndrome_check_2 = polyval(est_code_poly_2, bch_roots);
+    
+%     if num_errors(1) > num_errors(2)
+    if syndrome_check_2 == 0
         % most likely codeword is the second one %
         likely_codeword = est_codewords(2, :);
-    else
+    elseif syndrome_check_1 == 0
         % most likely code word is the first one %
         likely_codeword = est_codewords(1, :);
+    else
+        likely_codeword = 0*est_codewords(1, :);
     end
     % decode the original message from the most likely codeword %
     est_msg = likely_codeword(N-K+1:end);
@@ -191,23 +200,21 @@ for rx_msg = rx_messages
     est_msg_double = double(est_msg.x);
     % add them to the cell %
     code = cell(1, 1);
-    for iter = 1:length(likely_codeword_double)
-        code{1, 1}(iter) = int2str(likely_codeword_double(iter));
-    end
-    all_est_codewords{1, end+1} = code{1, 1};
     msg = cell(1, 1);
-    
-    % check the syndrome of the estimated codeword %
-    est_code_poly = gf(fliplr(likely_codeword_double), M, PRIM_POLY);
-    syndrome_check = polyval(est_code_poly, bch_roots);
-    if syndrome_check ~= 0
-        msg{1, 1} = 'Cannot decode since the number of errors > t (=7)';
-    else
+    % check if atleast one syndrome is 0 %
+    if syndrome_check_1 .* syndrome_check_2 == 0
         for iter = 1:length(est_msg_double)
             msg{1, 1}(iter) = int2str(est_msg_double(iter));
         end
+        for iter = 1:length(likely_codeword_double)
+            code{1, 1}(iter) = int2str(likely_codeword_double(iter));
+        end
+    else
+        msg{1, 1} = 'Cannot decode since the number of errors > t (=7)';
+        code{1, 1} = 'Cannot decode since the number of errors > t (=7)';
     end
     all_est_msgs{1, end+1} = msg{1, 1};
+    all_est_codewords{1, end+1} = code{1, 1};
 end
 
 %% print the message and codeword to the file %%
