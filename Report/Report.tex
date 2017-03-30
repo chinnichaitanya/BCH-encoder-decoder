@@ -1,0 +1,212 @@
+\documentclass[a4paper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+
+\definecolor{mygreen}{rgb}{0, 0.5, 0}
+\definecolor{mygray}{rgb}{0.5, 0.5, 0.5}
+\definecolor{mymauve}{rgb}{0.58, 0, 0.82}
+\definecolor{mybackground}{rgb}{0.97, 0.97, 0.97}
+
+\lstset{%
+	language=Matlab,
+% 	basicstyle=\small\sffamily,
+	basicstyle=\small\ttfamily,
+	backgroundcolor=\color{mybackground},
+% 	numbers=left,
+	numberstyle=\tiny\color{mygray},
+	numbersep=5pt,
+	frame=single,
+	tabsize=2,
+	showstringspaces=false,
+	showtabs=false,
+	keepspaces=true,
+	stepnumber=1,
+	stringstyle=\color{mymauve},
+	commentstyle=\itshape\color{mygreen},
+	keywordstyle=\bfseries\color{blue},
+	rulecolor=\color{black},
+    moredelim=**[is][\color{red}]{@red}{@!red},
+    moredelim=**[is][\color{blue}]{@blue}{@!blue},
+    moredelim=**[is][\color{green}]{@green}{@!green},    
+	breaklines=true,
+	postbreak=\raisebox{0ex}[0ex][0ex]{\ensuremath{\color{red}\hookrightarrow\space}},
+}	
+
+\title{
+	EE5160: Error Control Coding \\ 
+    (Project-1) \\ 
+    \underline{BCH-encoder-decoder}
+}
+
+\author{
+	Chinni Chaitanya \quad \quad Prafulla Chandra \\
+    EE13B072 \quad \quad EE16D402
+}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\label{sec:introduction}
+The problem statement is to design a narrow-sense binary BCH (Bose–Chaudhuri–Hocquenghem) encoder and decoder with design distance, $\delta = 15$ and code length, $n = 127$. The Galois field $\mathbb{F}_{128}$ is constructed using the primitive polynomial $x^{7} + x^{3} + 1$. \newline \newline
+\textbf{Note:} The implementation is done in MATLAB and all the functions described below are to be considered MATLAB functions unless otherwise stated.
+\section{Construction of code}
+\label{sec:construction}
+\subsection{Generator polynomial}
+The generator polynomial, $g(x)$ is constructed by taking the LCM of the minimal polynomials of elements, $\left\lbrace \alpha, \alpha^{2}, \hdots \alpha^{14} \right\rbrace$ which is effectively the product of the minimal polynomials of the elements $\left\lbrace \alpha, \alpha^{3}, \alpha^{5}, \alpha^{7}, \alpha^{9}, \alpha^{11}, \alpha^{13} \right\rbrace$.
+
+The Galois field is generated using the function \texttt{gftuple()} and the minimal polynomials are generated using the function \texttt{gfminpol()}. The polynomial multiplication in $\mathbb{F}_{128}$ is implemented using the function \texttt{gfconv()}.
+
+\subsection{Calculation of $k$}
+The degree of the generator polynomial determined above is $49$. Therefore,
+\begin{align*}
+	&n-k = 49 \\
+	\Longrightarrow \quad &k = 127-49 \\
+	\Longrightarrow \quad &k = 78
+\end{align*}
+
+\section{Encoding}
+The encoding is done in \textit{systematic form}. The messages are read from \texttt{msg.txt} file and each message is encoded and saved to file \texttt{codeword.txt}. Systematic encoding can be described in the following steps,
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\begin{enumerate}
+	\item Multiply the message polynomial, $m(x)$ with $x^{n-k}$ i.e.\ multiply with $x^{49}$ in our case
+    \item Calculate the remainder when $x^{n-k}m(x)$ is divided with the generator polynomial, $g(x)$
+    \item Subtract the remainder from the polynomial $x^{n-k}m(x)$
+\end{enumerate}
+The multiplication with $x^{n-k}$ is essentially shifting the message bit array to right\footnote{We take the last bit of the message bit array to be $m_{k}$ and the first bit to be $m_{0}$} by $(n-k)$ zeros. This is implemented using \texttt{padarray()} function. For calculating remainder in Galois field $\mathbb{F}_{128}$, we have used \texttt{gfdeconv()} function. The \texttt{gfsub()} function is used for subtracting the remainder from $x^{n-k}m(x)$.
+
+\section{Decoding}
+The standard error correcting procedure for BCH codes is of three steps: 
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\begin{enumerate}
+	\item Compute the syndrome $S = (S_1, S_2,.......,S_{2t})$ from the received polynomial $r(x)$.
+	\item Determine the error location polynomial $\sigma(x)$ from the syndrome components, $S_1, S_2,.......,S_{2t}$.
+	\item Determine the locations of error by finding the roots of $\sigma(x)$ and correct the errors in $r(x)$.
+\end{enumerate}
+The input to the decoder i.e.\ the received vector is read from the file \texttt{rx.txt}. The first step in the decoding procedure is achieved by using the function \texttt{polyval()} with the received polynomial $r(x)$ and vector containing $\left\lbrace \alpha, \alpha^{2}, \hdots \alpha^{14} \right\rbrace$ as input arguments. The Galois field polynomial of $r(x)$ is constructed\footnote{Again, the last bit of the received bit array is considered $r_{n-1}$ and first bit is considered $r_{0}$} using the function \texttt{gf()}.
+
+The error location polynomial $\sigma(x)$ is found using the simplified Berlekamp-Massey iterative algorithm for binary BCH codes. If $\sigma(x)$ has a degree greater than $t = \frac{\delta - 1}{2}$, then the received codeword cannot be corrected. Else, proceed to step (iii).
+
+In the step (iii), each bit of the received polynomial/codeword is corrected by checking whether it's location has an error or not, i.e.\ to correct the $i^{th}$ bit in the received vector, we check whether $\alpha^{n-i}$ is a root of the error locator polynomial, $\sigma(x)$ or not(using the function \texttt{polyval()}). If it is, we correct the bit by adding a $1$ to it, otherwise, we leave it unaltered. This is done for each bit of received polynomial/codeword from the highest order position to lowest order position. The resulting polynomial corresponds to the correct codeword or the transmitted codeword.
+
+If the channel is a binary symmetric erasure channel, the received codeword may contain both errors and erasures. In this case, the decoding is accomplished in two steps: 
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\begin{enumerate}
+	\item All the erased positions are replaced with $0$ and the  resulting vector is decoded using the above standard BCH decoding algorithm.
+	\item All the erased positions are replaced with $1$ and the  resulting vector is decoded in the same way. $\hat{C}$
+\end{enumerate}
+
+\section{Results}
+We have tested our encoder and decoder algorithm for a few test message bits. The number of erasures and errors are also diversified to account for all possible cases listed below. 
+\renewcommand{\labelenumi}{$\bullet$}
+\begin{enumerate}
+	\item \texttt{M(x)} denotes the message vector
+    \item \texttt{C(x)} denotes the codeword
+    \item \texttt{R(x)} denotes the received vector
+    \item \texttt{C'(x)} denotes the estimated codeword
+    \item \texttt{M'(x)} denotes the estimated message vector
+    \item The errors and erasures are marked red in both codeword, received vector and the estimated codeword
+    \item $\delta$ is the design distance $( = 15)$
+\end{enumerate}
+\textbf{Example-1 (erasures + 2$\times$errors $< \delta$)}
+\begin{lstlisting}
+M(x): 000000000000000111001000010001101000110101101100001100
+			010111000000100110111010
+C(x): 0001@red1@!red00@red0@!red1011011010110010010110101100100110000101100000
+			@red0@!red000000000@red1@!red1100100001000110100011010110110000110001011
+			100@red0@!red000100110111010
+R(x): 0001@red2@!red00@red2@!red1011011010110010010110101100100110000101100000
+			@red2@!red000000000@red0@!red1100100001000110100011010110110000110001011
+			100@red1@!red000100110111010
+C'(x):0001@red1@!red00@red0@!red1011011010110010010110101100100110000101100000
+			@red0@!red000000000@red1@!red1100100001000110100011010110110000110001011
+			100@red0@!red000100110111010
+M'(x):000000000000000111001000010001101000110101101100001100
+			010111000000100110111010
+
+\end{lstlisting}
+\textbf{Example-2 (erasures + 2$\times$errors $< \delta$)}
+\begin{lstlisting}
+M(x): 000000000000000001111000100111000010111111101111111110
+			011101001111010100100100
+C(x): 010010101100101101011110010110001010011110110@red1@!red0@red11@!red00000
+			000000000000@red1111@!red00010011100001011111110111111111001110
+			1001111010100100100
+R(x): 010010101100101101011110010110001010011110110@red0@!red0@red00@!red00000
+			000000000000@red0000@!red00010011100001011111110111111111001110
+			1001111010100100100
+C'(x):010010101100101101011110010110001010011110110@red1@!red0@red11@!red00000
+			000000000000@red1111@!red00010011100001011111110111111111001110
+			1001111010100100100
+M'(x):000000000000000001111000100111000010111111101111111110
+			011101001111010100100100
+\end{lstlisting}
+\textbf{Example-3 (erasures + 2$\times$errors $> \delta$)}
+\begin{lstlisting}
+M(x): 000000000000000111111011000110010110010011010100001001
+			010111101000010011010100
+C(x): 000101011011101110001011101000110100111111001101100000
+			0@red0000@!red0000@red01@!red1@red111@!red10@red1@!red10@red0@!red011001011001001101010000100101011
+			1101000010011010100
+R(x): 000101011011101110001011101000110100111111001101100000
+			0@red1111@!red0000@red12@!red1@red200@!red10@red0@!red10@red1@!red011001011001001101010000100101011
+			1101000010011010100
+
+Output: Cannot decode since the number of errors > t (=7)
+\end{lstlisting}
+\textbf{Example-4 (erasures + 2$\times$errors $> \delta$)}
+\begin{lstlisting}
+M(x): 000000000000000010010011000111101001000111010001111100
+			010010100110110100100011
+C(x): @red1@!red000010011011111001110001110101011111100111101@red1@!red1100@red0@!red00
+			@red00@!red00@red00@!red00000@red1@!red00100110001@red1@!red11@red0@!red100100011101000111110001001
+			0100110110100100011
+R(x): @red2@!red000010011011111001110001110101011111100111101@red2@!red1100@red1@!red00
+			@red11@!red00@red21@!red00000@red2@!red00100110001@red0@!red11@red1@!red100100011101000111110001001
+			0100110110100100011
+C'(x):@red1@!red000010011011111001110001110101011111100111101@red1@!red1100@red0@!red00
+			@red00@!red00@red00@!red00000@red1@!red00100110001@red1@!red11@red0@!red100100011101000111110001001
+			0100110110100100011
+M'(x):000000000000000010010011000111101001000111010001111100
+			010010100110110100100011
+\end{lstlisting}
+This shows that the BCH code can decode beyond minimum distance but not in all cases. We have shown two cases where the number of errors and erasures don't satisfy minimum distance condition and in one of them it fails (Example-3) and in one of them it decodes correctly(Example-4).
+
+The following table gives the intermediate table values for the Example-4 case when the erasures are replaced by 1 (leads to less errors after replace when compared to replacing with 0).
+
+\begin{center}
+  	\begin{tabular}{ c | l | c | c | c }
+        \toprule
+        $\mu$ & $\sigma^{(\mu)}(X)$ & $d_{\mu}$ & $l_{\mu}$ & $2\mu - l_{\mu}$ \\ \hline
+        $-\frac{1}{2}$ & 0 & 0 & 0 & 1 \\ \hline
+        0 & 0 & 28 & 0 & 0 \\ \hline
+        1 & 0 28 & 66 & 1 & 1 \\ \hline
+        2 & 0 28 38 & 69 & 2 & 2 \\ \hline
+        3 & 0 28 121 31 & 108 & 3 & 3 \\ \hline
+        4 & 0 28 44 80 77 & 68 & 4 & 4 \\ \hline
+        5 & 0 28 120 71 74 118 & 22 & 5 & 5 \\ \hline
+        6 & 0 28 11 29 41 67 31 & 84 & 6 & 6 \\ \hline
+        7 & 0 28 105 4 47 108 77 53 & - & 7 & 7 \\
+		\bottomrule
+    \end{tabular}
+\end{center}
+
+
+\begin{thebibliography}{9}
+\bibitem{nano3}
+  ``Error Control Coding: Fundamentals and Applications'' by Shu Lin, Daniel J. Costello Jr.
+\end{thebibliography}
+\end{document}
