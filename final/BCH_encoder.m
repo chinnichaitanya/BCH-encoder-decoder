@@ -7,6 +7,7 @@ clc;
 P = 2;
 M = 7;
 delta = 15;
+T = (delta-1)/2;
 erasure = '2';
 N = P^M - 1;
 PRIM_POLY = 'D^7 + D^3 + 1';
