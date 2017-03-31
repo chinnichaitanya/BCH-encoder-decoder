@@ -153,10 +153,8 @@ for rx_msg = rx_messages
         end
         % iterate to find the error-locator-polynomial %
         for i = 1:6
-            % find the degree of the current sigma polynomial %
-            j = degree_poly(Sigma(i+2, :))+1;
             % update the corresponding vectors %
-            L(i+2) = j-1;
+            L(i+2) = degree_poly(Sigma(i+2, :));
             Diff(i+2) = 2*Mu(i+2) - L(i+2);
             % calculate the discrepancy %
             Discrepancy(i+2) = 0;
