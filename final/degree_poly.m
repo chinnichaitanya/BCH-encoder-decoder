@@ -4,6 +4,7 @@
 % EE5160: Error Control Coding
 % Name: degree_poly.m
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% return degree of polynomial in ascending order of powers %%
 function deg = degree_poly(poly_vec)
     l = length(poly_vec);
     while poly_vec(l) == 0

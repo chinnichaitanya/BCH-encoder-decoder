@@ -4,7 +4,7 @@
 % EE5160: Error Control Coding
 % Name: gf2exp.m
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% converts gf array elements to exponential form %%
+%% convert gf array elements to exponential form %%
 function exp_array = gf2exp(gf_array, FIELD, EXPFORM)
     field = bi2de(FIELD);
     exp_array = [];
