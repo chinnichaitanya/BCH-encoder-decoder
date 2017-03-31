@@ -43,12 +43,22 @@ while ischar(fileline)
 end
 fclose(rx_msgfile);
 
+%% clear the logfile for printing intermediate table values and syndrome %%
+logfile = fopen('logfile.log', 'w');
+fclose(logfile);
+
 %% decode the received messages %%
 all_est_codewords = cell(1, 0);
 all_est_msgs = cell(1, 0);
 est_codewords = gf(zeros(2, N), M, PRIM_POLY);
-
+        
+% open the logfile in append mode %
+logfile = fopen('logfile.log', 'a');
+% iterate over the messages %
 for rx_msg = rx_messages
+    % print the received codeword to logfile %
+    fprintf(logfile, 'Received codeword: %s\n\n', rx_msg{1, 1});
+    
     for change = [0, 1]
         % replace erasures with 0's and 1's %
         rx = strrep(rx_msg{1, 1}, erasure, int2str(change));
@@ -70,9 +80,21 @@ for rx_msg = rx_messages
         bch_roots = gf(integer_representation, M, PRIM_POLY);
         % calculate the syndrome at the roots %
         syndrome = polyval(Rx_poly, bch_roots);
+
+        % print the change with which erasure is replaced %
+        fprintf(logfile, 'Replace erasure with: %d\n', change);
+        % print syndrome to logfile %
+        fprintf(logfile, 'Syndrome: ');
+        fprintf(logfile, '%d\t', gf2exp(syndrome, FIELD, EXPFORM));
+        fprintf(logfile, '\n');
+        % print to logfile %
+        fprintf(logfile, 'MU\t\t\t\t');
+        fprintf(logfile, 'SIGMA(X)\t\t\t\t\t\t\t\t');
+        fprintf(logfile, 'DISCREPANCY\t\t\t');
+        fprintf(logfile, 'DEGREE\t\t\t');
+        fprintf(logfile, 'DIFFERENCE\n');        
         
         % simplified BM-algorithm for finding error-locator-polynomial %
-        
         % initializing the variables %
         % mu-vector %
         Mu = [-0.5, 0, 1, 2, 3, 4, 5, 6, 7];
@@ -99,32 +121,28 @@ for rx_msg = rx_messages
         % update the discrepancy for the first iteration %
         Discrepancy(2) = syndrome(1);
 
-        % print the intermediate table values %
+        % print the intermediate table values to logfile %
         for i = 1:2
-            fprintf('Mu: %d\n', Mu(i));
-            fprintf('Degree: %d\n', L(i));
+            fprintf(logfile, '%.2f\t\t\t', Mu(i));
+
+            % get degree of the sigma polynomial %
+            j = degree_poly(Sigma(i, :))+1;
+            sig = Sigma(i, 1:j);
+            fprintf(logfile, '%d\t', gf2exp(sig, FIELD, EXPFORM));
+            for tabIter = 1:(10-j)
+                fprintf(logfile, '\t');            
+            end       
             
             dis = Discrepancy(i);
-            fprintf('Discrepancy: %d\n', gf2exp(dis, FIELD, EXPFORM));
-            
-            fprintf('Difference: %d\n', Diff(i));
-            
-            % get degree of the sigma polynomial %
-            j = 84;
-            while Sigma(i, j) == 0
-                j = j-1;
-            end
-            sig = Sigma(i, 1:j);
-            fprintf('Sigma:');
-            disp(gf2exp(sig, FIELD, EXPFORM));
+            fprintf(logfile, '%d\t\t\t\t\t', gf2exp(dis, FIELD, EXPFORM));
+
+            fprintf(logfile, '%d\t\t\t\t', L(i));
+            fprintf(logfile, '%d\n', Diff(i));          
         end
         % iterate to find the error-locator-polynomial %
         for i = 1:6
             % find the degree of the current sigma polynomial %
-            j = 84;
-            while Sigma(i+2, j) == 0
-                j = j-1;
-            end
+            j = degree_poly(Sigma(i+2, :))+1;
             % update the corresponding vectors %
             L(i+2) = j-1;
             Diff(i+2) = 2*Mu(i+2) - L(i+2);
@@ -155,37 +173,39 @@ for rx_msg = rx_messages
                 add_poly = mul_poly(degree, Sigma(rho_index, :), L(rho_index), M, PRIM_POLY);
                 Sigma(i+3, :) = Sigma(i+2, :) + coeff*add_poly;
             end
-            % print the intermediate table values %
-            fprintf('Mu: %d\n', Mu(i+2));
-            fprintf('Degree: %d\n', L(i+2));
-            
-            dis = Discrepancy(i+2);
-            fprintf('Discrepancy: %d\n', gf2exp(dis, FIELD, EXPFORM));
-            
-            fprintf('Difference: %d\n', Diff(i+2));
-            
+            % print the intermediate table values to logfile %
+            fprintf(logfile, '%.2f\t\t\t', Mu(i+2));
+
             % get degree of the sigma polynomial %
-            j = 84;
-            while Sigma(i+2, j) == 0
-                j = j-1;
-            end
+            j = degree_poly(Sigma(i+2, :))+1;            
             sig = Sigma(i+2, 1:j);
-            fprintf('Sigma:');
-            disp(gf2exp(sig, FIELD, EXPFORM));
+            fprintf(logfile, '%d\t', gf2exp(sig, FIELD, EXPFORM));
+            for tabIter = 1:(10-j)
+                fprintf(logfile, '\t');            
+            end            
+            dis = Discrepancy(i+2);
+            fprintf(logfile, '%d\t\t\t\t\t', gf2exp(dis, FIELD, EXPFORM));
+
+            fprintf(logfile, '%d\t\t\t\t', L(i+2));
+            fprintf(logfile, '%d\n', Diff(i+2));             
         end
-        % print the intermediate table values %
-        fprintf('Mu: %d\n', Mu(9));
+        % print the intermediate table values to logfile %
+        fprintf(logfile, '%.2f\t\t\t', Mu(9));
+
         % get degree of the sigma polynomial %
-        j = 84;
-        while Sigma(9, j) == 0
-            j = j-1;
-        end
-        fprintf('Degree: %d\n', j-1);
-        fprintf('Discrepancy: -\n');
-        fprintf('Difference: %d\n', 2*Mu(9)-j+1);
+        j = degree_poly(Sigma(9, :))+1;
         sig = Sigma(9, 1:j);
-        fprintf('Sigma:');
-        disp(gf2exp(sig, FIELD, EXPFORM));
+        fprintf(logfile, '%d\t', gf2exp(sig, FIELD, EXPFORM));
+        for tabIter = 1:(10-j)
+            fprintf(logfile, '\t');            
+        end
+
+        fprintf(logfile, '----\t\t\t\t');
+
+        fprintf(logfile, '%d\t\t\t\t', j-1);
+        fprintf(logfile, '%d\n', 2*Mu(9)-j+1);          
+        
+        fprintf(logfile, '\n');
         
         % estimate the codeword from the error-locator-polynomial %
         % evaluate the error-locator-polynomial for each element in GF(P^M) %
@@ -200,7 +220,7 @@ for rx_msg = rx_messages
         % update the estimated codeword depending on the evaluated vector %
         % update for first element separately and for other elements separately %
         for h = 2:N
-            if err_vector(h) == 00
+            if err_vector(h) == 0
                 % implies that element is a root of ELP %
                 est_codeword(h-1) = 1 + Rx_poly(h-1);
             else
@@ -218,7 +238,21 @@ for rx_msg = rx_messages
         % flip the estimated codeword to get in correct order %
         est_codeword = fliplr(est_codeword);
         % update the array %
-        est_codewords(change+1, :) = est_codeword;        
+        est_codewords(change+1, :) = est_codeword;
+        
+        %%% TEST %%%
+        if change == 0
+            sig_roots_0 = roots(fliplr(Sigma(9, :)));
+            indices = find(err_vector == 0);
+            est_sig_roots_0 = bi2de(FIELD(indices+1, :), P, 'right-msb');
+            degree_0 = degree_poly(Sigma(9, :));
+        elseif change == 1
+            sig_roots_1 = roots(fliplr(Sigma(9, :)));
+            indices = find(err_vector == 0);
+            est_sig_roots_1 = bi2de(FIELD(indices+1, :), P, 'right-msb');
+            degree_1 = degree_poly(Sigma(9, :));
+        end
+        %%% TEST %%%
     end
     
     % check the syndrome of the two decoded codewords %
@@ -263,16 +297,39 @@ for rx_msg = rx_messages
     end
     all_est_msgs{1, end+1} = msg{1, 1};
     all_est_codewords{1, end+1} = code{1, 1};
+    
+    % print final syndromes for both cases %
+    fprintf(logfile, 'Est. Syndrome for "0": ');
+    fprintf(logfile, '%d\t', gf2exp(syndrome_check_1, FIELD, EXPFORM));
+    fprintf(logfile, '\n');
+    fprintf(logfile, 'Est. Syndrome for "1": ');
+    fprintf(logfile, '%d\t', gf2exp(syndrome_check_2, FIELD, EXPFORM));
+    fprintf(logfile, '\n');
+    % print the mostlikely (estimated) codeword %
+    fprintf(logfile, 'Est. codeword: %s\n', code{1, 1});
+    % print to logfile %
+    fprintf(logfile, '\n\n');
+    for logIter_1 = 1:2
+        for logIter_2 = 1:127
+            fprintf(logfile, '=');
+        end
+        fprintf(logfile, '\n');
+    end
+    fprintf(logfile, '\n\n\n');
 end
+% close the logfile %
+fclose(logfile);
 
 %% print the message and codeword to the file %%
-decodefile = fopen('decoderOut.txt', 'w');
+decodecodefile = fopen('decoderOut_codeword.txt', 'w');
+decodemsgfile = fopen('decoderOut_msg.txt', 'w');
 for i = 1:size(rx_messages, 2)
     codestr = all_est_codewords{1, i};
     msgstr = all_est_msgs{1, i};
     
-    fprintf(decodefile, '%s\n', codestr);
-    fprintf(decodefile, '%s\n', msgstr);
-    fprintf(decodefile, '\n');
+    fprintf(decodecodefile, '%s\n', codestr);
+    
+    fprintf(decodemsgfile, '%s\n', msgstr);
 end
-fclose(decodefile);
+fclose(decodecodefile);
+fclose(decodemsgfile);
