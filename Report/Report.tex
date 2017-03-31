@@ -1,4 +1,4 @@
-\documentclass[a4paper]{article}
+\documentclass[10 pt]{article}
 
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
@@ -12,12 +12,13 @@
 \usepackage{listings}
 \usepackage{booktabs}
 \usepackage{mathrsfs}
+\usepackage[a4paper, total={6in, 10in}]{geometry}
 
 \definecolor{mygreen}{rgb}{0, 0.5, 0}
 \definecolor{mygray}{rgb}{0.5, 0.5, 0.5}
 \definecolor{mymauve}{rgb}{0.58, 0, 0.82}
-\definecolor{mybackground}{rgb}{0.97, 0.97, 0.97}
-
+% \definecolor{mybackground}{rgb}{0.97, 0.97, 0.97}
+\definecolor{mybackground}{rgb}{0.98, 0.98, 0.98}
 \lstset{%
 	language=Matlab,
 % 	basicstyle=\small\sffamily,
@@ -63,6 +64,7 @@
 \label{sec:introduction}
 The problem statement is to design a narrow-sense binary BCH (Bose–Chaudhuri–Hocquenghem) encoder and decoder with design distance, $\delta = 15$ and code length, $n = 127$. The Galois field $\mathbb{F}_{128}$ is constructed using the primitive polynomial $x^{7} + x^{3} + 1$. \newline \newline
 \textbf{Note:} The implementation is done in MATLAB and all the functions described below are to be considered MATLAB functions unless otherwise stated.
+
 \section{Construction of code}
 \label{sec:construction}
 \subsection{Generator polynomial}
@@ -89,99 +91,99 @@ The encoding is done in \textit{systematic form}. The messages are read from \te
 The multiplication with $x^{n-k}$ is essentially shifting the message bit array to right\footnote{We take the last bit of the message bit array to be $m_{k}$ and the first bit to be $m_{0}$} by $(n-k)$ zeros. This is implemented using \texttt{padarray()} function. For calculating remainder in Galois field $\mathbb{F}_{128}$, we have used \texttt{gfdeconv()} function. The \texttt{gfsub()} function is used for subtracting the remainder from $x^{n-k}m(x)$.
 
 \section{Decoding}
-The standard error correcting procedure for BCH codes is of three steps: 
+The standard (systematic) error correcting procedure for BCH codes is of three steps: 
 \renewcommand{\labelenumi}{(\roman{enumi})}
 \begin{enumerate}
 	\item Compute the syndrome $S = (S_1, S_2,.......,S_{2t})$ from the received polynomial $r(x)$.
 	\item Determine the error location polynomial $\sigma(x)$ from the syndrome components, $S_1, S_2,.......,S_{2t}$.
 	\item Determine the locations of error by finding the roots of $\sigma(x)$ and correct the errors in $r(x)$.
+    \item Determine the estimated message as the last\footnote{Since the last bit of estimated codeword will be $\hat{c}_{n-1}$ and the first bit will be $\hat{c}_{0}$} $k$-bits of the estimated codewords (since systematic decoding)
 \end{enumerate}
-The input to the decoder i.e.\ the received vector is read from the file \texttt{rx.txt}. The first step in the decoding procedure is achieved by using the function \texttt{polyval()} with the received polynomial $r(x)$ and vector containing $\left\lbrace \alpha, \alpha^{2}, \hdots \alpha^{14} \right\rbrace$ as input arguments. The Galois field polynomial of $r(x)$ is constructed\footnote{Again, the last bit of the received bit array is considered $r_{n-1}$ and first bit is considered $r_{0}$} using the function \texttt{gf()}.
+The input to the decoder i.e.\ the received vector is read from the file \texttt{rx.txt}. The first step in the decoding procedure is achieved by using the function \texttt{polyval()} with the received polynomial $r(x)$ and vector containing $\left\lbrace \alpha, \alpha^{2}, \hdots \alpha^{14} \right\rbrace$ as input arguments. The Galois field polynomial of $r(x)$ is constructed\footnote{Again, we consider the last bit of the received bit array as $r_{n-1}$ and first bit as $r_{0}$} using the function \texttt{gf()}.
 
-The error location polynomial $\sigma(x)$ is found using the simplified Berlekamp-Massey iterative algorithm for binary BCH codes. If $\sigma(x)$ has a degree greater than $t = \frac{\delta - 1}{2}$, then the received codeword cannot be corrected. Else, proceed to step (iii).
-
-In the step (iii), each bit of the received polynomial/codeword is corrected by checking whether it's location has an error or not, i.e.\ to correct the $i^{th}$ bit in the received vector, we check whether $\alpha^{n-i}$ is a root of the error locator polynomial, $\sigma(x)$ or not(using the function \texttt{polyval()}). If it is, we correct the bit by adding a $1$ to it, otherwise, we leave it unaltered. This is done for each bit of received polynomial/codeword from the highest order position to lowest order position. The resulting polynomial corresponds to the correct codeword or the transmitted codeword.
+The error locator polynomial $\sigma(x)$ is found using the simplified Berlekamp-Massey iterative algorithm for binary BCH codes where we iterate for $t$-steps. The BM-algorithm can fail in many cases listed below,
+\renewcommand{\labelenumi}{$\bullet$}
+\begin{enumerate}
+	\item Some roots of the error locator polynomial might not be in the current Galois field, $\mathbb{F}_{128}$ and it occurs when the number of errors exceed $t$, or \textit{$2\times$number of errors $> \delta$}
+    \item The error locator polynomial might have more than $t$ roots but within the Galois field, $\mathbb{F}_{128}$
+    \item The BM-algorithm might return an error locator polynomial which has repeated roots which results in decoder failure
+\end{enumerate}
+In all the above cases, we report \textit{Decoder failure: $<$relevant error message$>$}. In the step (iii), each bit of the received polynomial/codeword is corrected by checking whether it's location has an error or not, i.e.\ to correct the $i^{th}$ bit in the received vector, we check whether $\alpha^{n-i}$ is a root of the error locator polynomial, $\sigma(x)$ or not (by using the function \texttt{polyval()}). If it is, we correct the bit by adding $1$ to it, otherwise, we leave it unaltered. This is done for each bit of received polynomial/codeword from the highest order position to lowest order position. We then compute the syndrome of the resulting polynomial and check if it is all $0$. If it is, we consider it to be an estimate of the transmitted codeword and we call it the \textbf{estimated codeword}. Else, we report the decoder failure which is one of the three categories listed above.
 
 If the channel is a binary symmetric erasure channel, the received codeword may contain both errors and erasures. In this case, the decoding is accomplished in two steps: 
 \renewcommand{\labelenumi}{(\roman{enumi})}
 \begin{enumerate}
 	\item All the erased positions are replaced with $0$ and the  resulting vector is decoded using the above standard BCH decoding algorithm.
-	\item All the erased positions are replaced with $1$ and the  resulting vector is decoded in the same way. $\hat{C}$
+	\item All the erased positions are replaced with $1$ and the  resulting vector is decoded in the same way.
+\end{enumerate}
+We will then have two estimated codewords and we need to choose one of them. This is done in the following steps,
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\begin{enumerate}
+	\item If both the estimated codewords have non-zero syndrome, we report decoder failure
+    \item If one of them have non-zero syndrome, we discard it and proceed to further tests listed below for the other estimated codeword
+    	\begin{itemize}
+    		\item The number of roots of the error locator polynomial must be $<t$ and all of them must be distinct and must belong to the Galois field, $\mathbb{F}_{128}$ for it to be the estimated codeword
+            \item In any other case, we report decoder failure with appropriate error message
+    	\end{itemize}
 \end{enumerate}
 
 \section{Results}
-We have tested our encoder and decoder algorithm for a few test message bits. The number of erasures and errors are also diversified to account for all possible cases listed below. 
+Below are the results of our encoder-decoder algorithm implemented for a few test cases. The errors and erasures are marked red in both codeword, received vector and the estimated codeword for ease of checking.
 \renewcommand{\labelenumi}{$\bullet$}
 \begin{enumerate}
-	\item \texttt{M(x)} denotes the message vector
-    \item \texttt{C(x)} denotes the codeword
+	\item \texttt{M(x)} and \texttt{M'(x)} denote the message vector and the estimated message vector respectively
+    \item \texttt{C(x)} and \texttt{C'(x)} denote the codeword and the estimated codeword respectively
     \item \texttt{R(x)} denotes the received vector
-    \item \texttt{C'(x)} denotes the estimated codeword
-    \item \texttt{M'(x)} denotes the estimated message vector
-    \item The errors and erasures are marked red in both codeword, received vector and the estimated codeword
-    \item $\delta$ is the design distance $( = 15)$
 \end{enumerate}
 \textbf{Example-1 (erasures + 2$\times$errors $< \delta$)}
 \begin{lstlisting}
-M(x): 000000000000000111001000010001101000110101101100001100
-			010111000000100110111010
-C(x): 0001@red1@!red00@red0@!red1011011010110010010110101100100110000101100000
-			@red0@!red000000000@red1@!red1100100001000110100011010110110000110001011
-			100@red0@!red000100110111010
-R(x): 0001@red2@!red00@red2@!red1011011010110010010110101100100110000101100000
-			@red2@!red000000000@red0@!red1100100001000110100011010110110000110001011
-			100@red1@!red000100110111010
-C'(x):0001@red1@!red00@red0@!red1011011010110010010110101100100110000101100000
-			@red0@!red000000000@red1@!red1100100001000110100011010110110000110001011
-			100@red0@!red000100110111010
-M'(x):000000000000000111001000010001101000110101101100001100
-			010111000000100110111010
-
+M(x): 0000000000000001110010000100011010001101011011000011000101110000001001
+			10111010
+C(x): 0001@red1@!red00@red0@!red1011011010110010010110101100100110000101100000@red0@!red000000000@red1@!red11001
+			00001000110100011010110110000110001011100@red0@!red000100110111010
+R(x): 0001@red2@!red00@red2@!red1011011010110010010110101100100110000101100000@red2@!red000000000@red0@!red11001
+			00001000110100011010110110000110001011100@red1@!red000100110111010
+C'(x):0001@red1@!red00@red0@!red1011011010110010010110101100100110000101100000@red0@!red000000000@red1@!red11001
+			00001000110100011010110110000110001011100@red0@!red000100110111010
+M'(x):0000000000000001110010000100011010001101011011000011000101110000001001
+			10111010
 \end{lstlisting}
-\textbf{Example-2 (erasures + 2$\times$errors $< \delta$)}
+\textbf{Example-2 (errors $= t$, erasures $= 0$)}
 \begin{lstlisting}
-M(x): 000000000000000001111000100111000010111111101111111110
-			011101001111010100100100
-C(x): 010010101100101101011110010110001010011110110@red1@!red0@red11@!red00000
-			000000000000@red1111@!red00010011100001011111110111111111001110
-			1001111010100100100
-R(x): 010010101100101101011110010110001010011110110@red0@!red0@red00@!red00000
-			000000000000@red0000@!red00010011100001011111110111111111001110
-			1001111010100100100
-C'(x):010010101100101101011110010110001010011110110@red1@!red0@red11@!red00000
-			000000000000@red1111@!red00010011100001011111110111111111001110
-			1001111010100100100
-M'(x):000000000000000001111000100111000010111111101111111110
-			011101001111010100100100
+M(x): 0000000000000000011110001001110000101111111011111111100111010011110101
+			00100100
+C(x): 010010101100101101011110010110001010011110110@red1@!red0@red11@!red00000000000000000@red1111@!red
+			000100111000010111111101111111110011101001111010100100100
+R(x): 010010101100101101011110010110001010011110110@red0@!red0@red00@!red00000000000000000@red0000@!red
+			000100111000010111111101111111110011101001111010100100100
+C'(x):010010101100101101011110010110001010011110110@red1@!red0@red11@!red00000000000000000@red1111@!red
+			000100111000010111111101111111110011101001111010100100100
+M'(x):0000000000000000011110001001110000101111111011111111100111010011110101
+			00100100
 \end{lstlisting}
 \textbf{Example-3 (erasures + 2$\times$errors $> \delta$)}
 \begin{lstlisting}
-M(x): 000000000000000111111011000110010110010011010100001001
-			010111101000010011010100
-C(x): 000101011011101110001011101000110100111111001101100000
-			0@red0000@!red0000@red01@!red1@red111@!red10@red1@!red10@red0@!red011001011001001101010000100101011
-			1101000010011010100
-R(x): 000101011011101110001011101000110100111111001101100000
-			0@red1111@!red0000@red12@!red1@red200@!red10@red0@!red10@red1@!red011001011001001101010000100101011
-			1101000010011010100
+M(x): 0000000000000001111110110001100101100100110101000010010101111010000100
+			11010100
+C(x): 0001010110111011100010111010001101001111110011011000000@red0000@!red0000@red01@!red1@red111@!red1
+			0@red1@!red10@red0@!red0110010110010011010100001001010111101000010011010100
+R(x): 0001010110111011100010111010001101001111110011011000000@red1111@!red0000@red12@!red1@red200@!red1
+			0@red0@!red10@red1@!red0110010110010011010100001001010111101000010011010100
 
-Output: Cannot decode since the number of errors > t (=7)
+Output: 'Decoder failure: Some roots of ELP do not belong to GF[128] because number of errors > t (=7)'
 \end{lstlisting}
 \textbf{Example-4 (erasures + 2$\times$errors $> \delta$)}
 \begin{lstlisting}
-M(x): 000000000000000010010011000111101001000111010001111100
-			010010100110110100100011
-C(x): @red1@!red000010011011111001110001110101011111100111101@red1@!red1100@red0@!red00
-			@red00@!red00@red00@!red00000@red1@!red00100110001@red1@!red11@red0@!red100100011101000111110001001
-			0100110110100100011
-R(x): @red2@!red000010011011111001110001110101011111100111101@red2@!red1100@red1@!red00
-			@red11@!red00@red21@!red00000@red2@!red00100110001@red0@!red11@red1@!red100100011101000111110001001
-			0100110110100100011
-C'(x):@red1@!red000010011011111001110001110101011111100111101@red1@!red1100@red0@!red00
-			@red00@!red00@red00@!red00000@red1@!red00100110001@red1@!red11@red0@!red100100011101000111110001001
-			0100110110100100011
-M'(x):000000000000000010010011000111101001000111010001111100
-			010010100110110100100011
+M(x): 0000000000000000100100110001111010010001110100011111000100101001101101
+			00100011
+C(x): @red1@!red000010011011111001110001110101011111100111101@red1@!red1100@red0@!red00@red00@!red00@red00@!red00000@red1@!red0010
+			0110001@red1@!red11@red0@!red1001000111010001111100010010100110110100100011
+R(x): @red2@!red000010011011111001110001110101011111100111101@red2@!red1100@red1@!red00@red11@!red00@red21@!red00000@red2@!red0010
+			0110001@red0@!red11@red1@!red1001000111010001111100010010100110110100100011
+C'(x):@red1@!red000010011011111001110001110101011111100111101@red1@!red1100@red0@!red00@red00@!red00@red00@!red00000@red1@!red0010
+			0110001@red1@!red11@red0@!red1001000111010001111100010010100110110100100011
+M'(x):0000000000000000100100110001111010010001110100011111000100101001101101
+			00100011
 \end{lstlisting}
 This shows that the BCH code can decode beyond minimum distance but not in all cases. We have shown two cases where the number of errors and erasures don't satisfy minimum distance condition and in one of them it fails (Example-3) and in one of them it decodes correctly(Example-4).
 
@@ -204,6 +206,22 @@ The following table gives the intermediate table values for the Example-4 case w
     \end{tabular}
 \end{center}
 
+\section{Instructions to run the code}
+\subsection{Encoding}
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\begin{enumerate}
+	\item Add the message bit vectors to the file \texttt{msg.txt} with one message vector in each line
+    \item Execute \texttt{BCH\_encoder.m} and it will output the encoded message vectors to the file \texttt{codeword.txt} in the same order as the messages in \texttt{msg.txt}
+\end{enumerate}
+
+\subsection{Decoding}
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\begin{enumerate}
+	\item Add the received codewords to the file \texttt{rx.txt} with erasures represented with \textbf{2}
+    \item Execute \texttt{BCH\_decoder.m} and it will output the decoded/estimated codewords to the file \texttt{decoderOut\_coderowd.txt} and the decoded/estimated message bit vectors to the file \texttt{decoderOut\_msg.txt}
+    \item It also prints the intermediate table values of the Berlekamp-Massey algorithm, for all the cases to \texttt{logfile.log}
+    \item Note that if the decoder fails, the corresponding error message will be printed instead of the estimated codeword and the estimated message vector
+\end{enumerate}
 
 \begin{thebibliography}{9}
 \bibitem{nano3}
