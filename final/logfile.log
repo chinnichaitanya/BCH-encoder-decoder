@@ -484,7 +484,7 @@ MU				SIGMA(X)								DISCREPANCY			DEGREE			DIFFERENCE
 
 Est. Syndrome for "0": 3	6	113	12	95	99	109	24	96	63	50	71	16	91	
 Est. Syndrome for "1": 33	66	90	5	61	53	79	10	69	122	99	106	52	31	
-Est. codeword: Cannot decode since the number of errors > t (=7)
+Est. codeword: Decoder failure: Number of roots > t (=7)
 
 
 ===============================================================================================================================
@@ -674,7 +674,7 @@ MU				SIGMA(X)								DISCREPANCY			DEGREE			DIFFERENCE
 
 Est. Syndrome for "0": 100	73	73	19	59	19	74	38	40	118	66	38	99	21	
 Est. Syndrome for "1": 100	73	73	19	59	19	74	38	40	118	66	38	99	21	
-Est. codeword: Cannot decode since the number of errors > t (=7)
+Est. codeword: Decoder failure: Number of roots > t (=7)
 
 
 ===============================================================================================================================

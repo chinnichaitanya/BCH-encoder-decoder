@@ -59,10 +59,19 @@ for rx_msg = rx_messages
     % print the received codeword to logfile %
     fprintf(logfile, 'Received codeword: %s\n\n', rx_msg{1, 1});
     
+    % initialize the falilure flag and message %
+    failure_flag = false;
+    failure_message = 'None';
+    % flag to check if ELP has repeated roots or not %
+    repeated_roots = [];
+    % flag to check if all roots of ELP lie in GF(P^M) %
+    roots_in_field = [];
+    % variables to store number of roots of ELP %
+    num_roots_err = [];
+    num_roots_fun = [];
+    
+    % replcace erasures with 0 and 1 %
     for change = [0, 1]
-        % flag to check repeated roots %
-        repeated_roots = [];
-        
         % replace erasures with 0's and 1's %
         rx = strrep(rx_msg{1, 1}, erasure, int2str(change));
         % generate the received vector vector form %
@@ -218,14 +227,20 @@ for rx_msg = rx_messages
         % evaluated values for ELP at each element %
         err_vector = polyval(err_poly, ele_field);
         % find the number of roots from error vector %
-        num_roots_err = length(find(err_vector == 0));
+        num_roots_err(change+1) = length(find(err_vector == 0));
         % find the number of roots from roots function %
-        num_roots_fun = length(roots(fliplr(Sigma(9, :))));
+        num_roots_fun(change+1) = length(roots(fliplr(Sigma(9, :))));
         % check for repeated roots %
-        if num_roots_err < num_roots_fun
+        if num_roots_err(change+1) < num_roots_fun(change+1)
             repeated_roots(change+1) = true;
         else
             repeated_roots(change+1) = false;
+        end
+        % check if all roots lie in the GF(P^M) %
+        if num_roots_err(change+1) == degree_poly(Sigma(9, :))
+            roots_in_field(change+1) = true;
+        else
+            roots_in_field(change+1) = false;
         end
 
         % initialize the estimated codeword in GF(P^M) %
@@ -252,20 +267,6 @@ for rx_msg = rx_messages
         est_codeword = fliplr(est_codeword);
         % update the array %
         est_codewords(change+1, :) = est_codeword;
-        
-        %%% TEST %%%
-        if change == 0
-            sig_roots_0 = roots(fliplr(Sigma(9, :)));
-            indices = find(err_vector == 0);
-            est_sig_roots_0 = bi2de(FIELD(indices+1, :), P, 'right-msb');
-            degree_0 = degree_poly(Sigma(9, :));
-        elseif change == 1
-            sig_roots_1 = roots(fliplr(Sigma(9, :)));
-            indices = find(err_vector == 0);
-            est_sig_roots_1 = bi2de(FIELD(indices+1, :), P, 'right-msb');
-            degree_1 = degree_poly(Sigma(9, :));
-        end
-        %%% TEST %%%
     end
     
     % check the syndrome of the two decoded codewords %
@@ -274,16 +275,122 @@ for rx_msg = rx_messages
     syndrome_check_1 = polyval(est_code_poly_1, bch_roots);
     syndrome_check_2 = polyval(est_code_poly_2, bch_roots);
     
-    % determine likely codeword depending on syndrome %
-    if syndrome_check_2 == 0
-        % most likely codeword is the second one %
-        likely_codeword = est_codewords(2, :);
-    elseif syndrome_check_1 == 0
-        % most likely code word is the first one %
-        likely_codeword = est_codewords(1, :);
+    % determine likely codeword depending on syndrome and examining roots of ELP %
+    if syndrome_check_2 == 0 & syndrome_check_1 == 0
+        if num_roots_err(1) < num_roots_err(2)
+            if roots_in_field(1) == true
+                if num_roots_err(1) <= T
+                    % most likely code is the first one %
+                    likely_codeword = est_codewords(1, :);
+                    failure_flag = false;
+                else
+                    % no likely codeword %
+                    % decoder failed %
+                    % make them all 0 %
+                    likely_codeword = 0*est_codewords(1, :);
+                    failure_message = 'Decoder failure: Number of roots > t (=7)';
+                    failure_flag = true;
+                end
+            else
+                % no likely codeword %
+                % decoder failed %
+                % make them all 0 %
+                likely_codeword = 0*est_codewords(1, :);
+                failure_message = 'Decoder failure: Roots do not belong to GF[128]';
+                failure_flag = true;
+            end
+        else
+            if roots_in_field(2) == true
+                if num_roots_err(2) <= T
+                    % most likely code is the second one %
+                    likely_codeword = est_codewords(2, :);
+                    failure_flag = false;
+                else
+                    % no likely codeword %
+                    % decoder failed %
+                    % make them all 0 %
+                    likely_codeword = 0*est_codewords(2, :);
+                    failure_message = 'Decoder failure: Number of roots > t (=7)';
+                    failure_flag = true;
+                end
+            else
+                % no likely codeword %
+                % decoder failed %
+                % make them all 0 %
+                likely_codeword = 0*est_codewords(1, :);
+                failure_message = 'Decoder failure: Roots do not belong to GF[128]';
+                failure_flag = true;
+            end
+        end 
+    elseif syndrome_check_1 == 0 & syndrome_check_2 ~= 0
+        if repeated_roots(1) == false 
+            if num_roots_err(1) <= T 
+                if roots_in_field(1) == true
+                    % most likely code word is the first one %
+                    likely_codeword = est_codewords(1, :);
+                    failure_flag = false;
+                else
+                    % no likely codeword %
+                    % decoder failed %
+                    % make them all 0 %
+                    likely_codeword = 0*est_codewords(1, :);
+                    failure_message = 'Decoder failure: Roots do not belong to GF[128]';
+                    failure_flag = true;    
+                end
+            else
+                % no likely codeword %
+                % decoder failed %
+                % make them all 0 %
+                likely_codeword = 0*est_codewords(1, :);
+                failure_message = 'Decoder failure: Number of roots > t (=7)';
+                failure_flag = true;
+            end
+        else
+            % no likely codeword %
+            % decoder failed %
+            % make them all 0 %
+            likely_codeword = 0*est_codewords(1, :);
+            failure_message = 'Decoder failure: Error Locator Polynomial has repeated roots';
+            failure_flag = true;
+        end
+    elseif syndrome_check_1 ~= 0 & syndrome_check_2 == 0
+        if repeated_roots(2) == false 
+            if num_roots_err(2) <= T 
+                if roots_in_field(2) == true
+                    % most likely code word is the first one %
+                    likely_codeword = est_codewords(2, :);
+                    failure_flag = false;
+                else
+                    % no likely codeword %
+                    % decoder failed %
+                    % make them all 0 %
+                    likely_codeword = 0*est_codewords(2, :);
+                    failure_message = 'Decoder failure: Roots do not belong to GF[128]';
+                    failure_flag = true;    
+                end
+            else
+                % no likely codeword %
+                % decoder failed %
+                % make them all 0 %
+                likely_codeword = 0*est_codewords(2, :);
+                failure_message = 'Decoder failure: Number of roots > t (=7)';
+                failure_flag = true;
+            end
+        else
+            % no likely codeword %
+            % decoder failed %
+            % make them all 0 %
+            likely_codeword = 0*est_codewords(2, :);
+            failure_message = 'Decoder failure: Error Locator Polynomial has repeated roots';
+            failure_flag = true;
+        end
     else
+        % no likely codeword %
+        % decoder failed %
         % make them all 0 %
         likely_codeword = 0*est_codewords(1, :);
+        failure_message = 'Decoder failure: Number of roots > t (=7)';
+        failure_flag = true;
     end
     % decode the original message from the most likely codeword %
     est_msg = likely_codeword(N-K+1:end);
@@ -297,7 +404,7 @@ for rx_msg = rx_messages
     msg = cell(1, 1);
     % check if atleast one syndrome is 0 %
     % condition for adding error message if decoder failed %
-    if syndrome_check_1 .* syndrome_check_2 == 0
+    if failure_flag == false
         for iter = 1:length(est_msg_double)
             msg{1, 1}(iter) = int2str(est_msg_double(iter));
         end
@@ -305,8 +412,8 @@ for rx_msg = rx_messages
             code{1, 1}(iter) = int2str(likely_codeword_double(iter));
         end
     else
-        msg{1, 1} = 'Cannot decode since the number of errors > t (=7)';
-        code{1, 1} = 'Cannot decode since the number of errors > t (=7)';
+        msg{1, 1} = failure_message;
+        code{1, 1} = failure_message;
     end
     all_est_msgs{1, end+1} = msg{1, 1};
     all_est_codewords{1, end+1} = code{1, 1};
