@@ -60,6 +60,9 @@ for rx_msg = rx_messages
     fprintf(logfile, 'Received codeword: %s\n\n', rx_msg{1, 1});
     
     for change = [0, 1]
+        % flag to check repeated roots %
+        repeated_roots = [];
+        
         % replace erasures with 0's and 1's %
         rx = strrep(rx_msg{1, 1}, erasure, int2str(change));
         % generate the received vector vector form %
@@ -214,6 +217,16 @@ for rx_msg = rx_messages
         ele_field = gf(int_rep_all, M, PRIM_POLY);
         % evaluated values for ELP at each element %
         err_vector = polyval(err_poly, ele_field);
+        % find the number of roots from error vector %
+        num_roots_err = length(find(err_vector == 0));
+        % find the number of roots from roots function %
+        num_roots_fun = length(roots(fliplr(Sigma(9, :))));
+        % check for repeated roots %
+        if num_roots_err < num_roots_fun
+            repeated_roots(change+1) = true;
+        else
+            repeated_roots(change+1) = false;
+        end
 
         % initialize the estimated codeword in GF(P^M) %
         est_codeword = gf(zeros(1, N), M, PRIM_POLY);
