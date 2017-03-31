@@ -12,11 +12,11 @@
 - `logfile.log` contains the intermediate table values of the simplified Berlekamp-Massey algorithm for each decoded codeword
 
 ## Instructions to run
-# Encoding
+### Encoding
 - Add the message bit vectors to the file `msg.txt` with one message vector in each line
 - Execute `BCH_encoder.m` and it will output the encoded message vectors to the file `codeword.txt` in the same order as the messages in `msg.txt`
 
-# Decoding
+### Decoding
 - Add the received codewords to the file `rx.txt` with erasures represented with '2'
 - Execute `BCH_decoder.m` and it will output the decoded/estimated codewords to the file `decoderOut_coderowd.txt` and the decoded/estimated message bit vectors to the file `decoderOut_msg.txt`
 - It also prints the intermediate table values of the Berlekamp-Massey algorithm, for all the cases to `logfile.log`
