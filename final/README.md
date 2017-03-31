@@ -1,9 +1,15 @@
 ## Description
-- `BCH_encoder.m` encodes the messages in `msg.txt` using the generator polynomial with the specified design properties and stores them in `codeword.txt`
-- `BCH_decoder.m` decodes the received codewords in `rx.txt` which contain **erasures** and **errors** and estimates the original message and stores them in `decoderOutput.txt`
-- The `decoderOutput.txt` file is updated such that the estimated codeword and the message vector are one after another for every received vecotr and it is updated with error-message if decoder couldn't decode the received vector
-- `mul_poly.m` is MATLAB function file which is used during decoding to multiply polynomials over Galois field
+- `BCH_encoder.m` is the program file for encoder
+- `BCH_decoder.m` is the program file for decoder
+- `degree_poly.m` is a MATLAB function file which returns the degree of the polynomial given as input in ascending order of terms with respect to the power
+- `mul_poly.m` is MATLAB function file which multipies polynomials over Galois field
 - `gf2exp.m` is a MATLAB function file which converts a **gf** format array to **exponential** format over the Galois field 
+- `mx.txt` contains the message vectors one per each line
+- `codeword.txt` contains the codewords one per each line corresponding to each message vector in `msg.txt`
+- `rx.txt` contains received codewords with errors and erasures (denoted by **2**) one per each line
+- `decoderOut_codeword.txt` contains the decoded/estimated codewords one per each line corresponding to each received codeword in `rx.txt`
+- `decoderOut_msg.txt` contains the decoded/estimated messages one per each line corresponding to each received codeword in `rx.txt`
+- `logfile.log` contains the intermediate table values of the simplified Berlekamp-Massey algorithm for each decoded codeword
 
 ## Instructions to run
 # Encoding
